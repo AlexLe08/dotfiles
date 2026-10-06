@@ -1,0 +1,8 @@
+# ~/.config/ghostty/config. Managed in ~/dotfiles/ghostty/config
+# Reload with Cmd+Shift+, ; list all options: ghostty +show-config --default --docs
+
+font-family = JetBrainsMono Nerd Font
+font-size = 14
+macos-option-as-alt = true      # makes Option+arrow word-jumping work in the shell
+window-save-state = always
+# theme = ...                   # browse with: ghostty +list-themes

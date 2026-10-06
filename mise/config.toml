@@ -1,0 +1,16 @@
+# ~/.config/mise/config.toml. Managed in ~/dotfiles/mise/config.toml
+# `mise use --global ...` edits this file through the symlink, so changes
+# show up in your dotfiles repo for you to commit.
+
+[tools]
+node = "lts"
+pnpm = "latest"
+python = "3.13"                 # one behind latest for library compatibility
+
+# Global CLIs pinned independently of Node (replaces Volta's global tools).
+# Add the ones from your `volta list all` inventory, e.g.:
+# "npm:typescript" = "latest"
+
+[settings]
+# Let mise read .nvmrc / .node-version / .python-version in existing projects.
+idiomatic_version_file_enable_tools = ["node", "python"]

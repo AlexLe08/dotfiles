@@ -1,0 +1,30 @@
+# ~/.gitconfig. Managed in ~/dotfiles/git/gitconfig
+# Shared BEHAVIOR lives here. Personal IDENTITY and signing live in
+# ~/.gitconfig.local (not committed). Write identity with:
+#   git config --file ~/.gitconfig.local user.email "..."
+# NOT `git config --global`, which would edit this file inside your repo.
+
+[include]
+  path = ~/.gitconfig.local
+
+[init]
+  defaultBranch = main
+
+[pull]
+  rebase = true            # linear history; swap for `ff = only` if you prefer to choose per pull
+
+[rebase]
+  autoStash = true
+
+[push]
+  autoSetupRemote = true   # no more --set-upstream on first push
+
+[fetch]
+  prune = true
+
+[core]
+  editor = code --wait     # change to `cursor --wait` when Cursor is your daily editor
+  excludesFile = ~/.gitignore_global
+
+[gpg]
+  format = ssh             # sign with your SSH key; signing is enabled in ~/.gitconfig.local

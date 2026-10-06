@@ -1,0 +1,15 @@
+# Copy to ~/.gitconfig.local (bootstrap.sh does this) and fill in.
+# This file is NOT committed: it holds identity and signing.
+
+[user]
+  name = Your Name
+  # GitHub -> Settings -> Emails -> "Keep my email addresses private" shows this address
+  email = 12345678+your-username@users.noreply.github.com
+  signingkey = ~/.ssh/id_ed25519.pub
+
+# Uncomment in Phase 5, AFTER the SSH key exists and is added to GitHub as a signing key.
+# Enabling this before the key exists makes every commit fail.
+# [commit]
+#   gpgsign = true
+# [tag]
+#   gpgSign = true

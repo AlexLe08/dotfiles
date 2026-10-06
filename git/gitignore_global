@@ -1,0 +1,5 @@
+# macOS junk that should never be committed anywhere
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
