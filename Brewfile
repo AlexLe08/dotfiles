@@ -19,6 +19,7 @@ brew "jq"                       # JSON on the command line
 brew "bat"                      # cat with syntax highlighting
 brew "tree"
 brew "wget"
+brew "tlrc"
 
 # ---- Containers ----
 # Docker Desktop provides the docker CLI, compose, and buildx.
@@ -44,6 +45,11 @@ cask "firefox@developer-edition"
 cask "bruno"                    # source of truth: collections live in your repos
 cask "postman"                  # learning/familiarity; keep real secrets out of synced envs
 cask "beekeeper-studio"
+
+# ---- Design & recording ----
+cask "figma"
+cask "kap"                      # screen recording; demo GIFs for READMEs and PRs
+cask "keycastr"                 # shows keystrokes on screen while recording
 
 # ---- Fonts ----
 cask "font-jetbrains-mono-nerd-font"
