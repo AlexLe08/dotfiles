@@ -30,7 +30,6 @@ cask "orbstack"                 # learning; free for personal, non-commercial us
 
 # ---- Terminal & editor ----
 cask "ghostty"
-cask "iterm2"                   # trial period alongside Ghostty; remove this line when you drop it
 cask "visual-studio-code"
 # cask "cursor"                 # uncomment when you're ready to switch
 
