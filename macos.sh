@@ -13,6 +13,7 @@ defaults write com.apple.finder ShowStatusBar -bool true
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"  # search current folder, not whole Mac
 defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 # Hidden files: toggle with Cmd+Shift+. in Finder instead of showing them always.
 
 # --- Keyboard ---
