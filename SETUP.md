@@ -49,7 +49,7 @@ This document has two jobs:
 |---|---|---|
 | Package manager | Homebrew + `Brewfile` / `Brewfile.local` | Declarative; two explicit files so personal apps never reach the public repo |
 | System tools vs language tools | Homebrew for system tools, **mise for language toolchains** | Always obvious where something came from; no "which Python is this?" |
-| Terminal | Ghostty (iTerm2 kept during a trial period) | Free, native, fast |
+| Terminal | Ghostty | Free, native, fast |
 | Shell | Plain zsh + Starship + 2 plugins (no Oh My Zsh) | You know what every line does |
 | Node | `node = "24"` (major pin), per-project `.nvmrc` | The `lts` alias moves on someone else's schedule (Node 26 becomes LTS in late 2026) |
 | JS package manager | pnpm globally; per project, whatever the lockfile says | Installing with the wrong one ignores the lockfile |
@@ -544,6 +544,7 @@ git -C ~/dotfiles status -sb        # ## main...origin/main
 | Global Node version changed by itself | `node = "lts"` follows new LTS releases | Pin a major: `node = "24"` |
 | An app's change landed in an unrelated commit | `git commit -am` stages everything | Stage by name; review `--staged` |
 | Shell startup got slower | Usually `compinit` | Profile (below) |
+| `brew uninstall`: "already an App at '/opt/homebrew/Caskroom/...'" | A leftover copy in Homebrew's storage folder | Look at both copies first, then `brew uninstall --cask --zap --force <name>` |
 
 **Profiling shell startup** (temporary edit, undone by Git):
 
