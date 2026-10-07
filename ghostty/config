@@ -1,8 +1,16 @@
 # ~/.config/ghostty/config. Managed in ~/dotfiles/ghostty/config
-# Reload with Cmd+Shift+, ; list all options: ghostty +show-config --default --docs
+# Ghostty only allows comments on their OWN line: a trailing "# ..." becomes part of the value.
+# Reload: Cmd+Shift+,   Validate: ghostty +validate-config
+# All options: ghostty +show-config --default --docs
 
 font-family = JetBrainsMono Nerd Font
 font-size = 14
-macos-option-as-alt = true      # makes Option+arrow word-jumping work in the shell
+
+# Left Option acts as Alt for shell shortcuts (Option+. inserts last argument, Option+d deletes word).
+# Right Option still types special characters (é, ©, ™).
+macos-option-as-alt = left
+
 window-save-state = always
-# theme = ...                   # browse with: ghostty +list-themes
+
+# Browse themes with: ghostty +list-themes
+theme = Liquid Carbon Transparent
