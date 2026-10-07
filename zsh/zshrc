@@ -6,6 +6,8 @@ typeset -U path PATH        # keep PATH entries unique, whatever adds them
 # ---- Completions (Oh My Zsh used to do this for you) ----
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
   FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:$FPATH"
+  # Docker CLI completions (shipped by Docker Desktop), if present
+  [[ -d "$HOME/.docker/completions" ]] && FPATH="$HOME/.docker/completions:$FPATH"
 fi
 autoload -Uz compinit && compinit
 

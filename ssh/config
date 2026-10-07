@@ -1,4 +1,6 @@
-Include /Users/lami/.colima/ssh_config
+# Machine-specific additions (OrbStack, etc.) go in ~/.ssh/config.local.
+# Include must come before any Host block, or it only applies to that Host.
+Include ~/.ssh/config.local
 
 # ~/.ssh/config. Managed in ~/dotfiles/ssh/config
 # Config only. Private keys NEVER go in the dotfiles repo.
