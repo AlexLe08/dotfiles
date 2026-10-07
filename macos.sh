@@ -31,8 +31,12 @@ defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled -bool false
 
 # --- Screenshots out of the Desktop ---
+# The folder is created here, but the location must be chosen BY HAND:
+#   Cmd+Shift+5 > Options > Other Location... > ~/Screenshots
+# Setting it with `defaults write` broke capture on macOS 26 ("Unable to capture
+# desktop image"), most likely because choosing it in the UI grants folder access
+# that a defaults write can't.
 mkdir -p "$HOME/Screenshots"
-defaults write com.apple.screencapture location -string "$HOME/Screenshots"
 
 # --- Dock ---
 defaults write com.apple.dock autohide -bool true
@@ -40,3 +44,4 @@ defaults write com.apple.dock show-recents -bool false
 
 killall Finder Dock SystemUIServer 2>/dev/null || true
 echo "Done. Log out and back in for key repeat changes to take effect."
+echo "MANUAL STEP: set screenshot location via Cmd+Shift+5 > Options > Other Location."
