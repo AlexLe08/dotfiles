@@ -3,7 +3,7 @@
 # show up in your dotfiles repo for you to commit.
 
 [tools]
-node = "lts"
+node = "24"
 pnpm = "latest"
 python = "3.13"                 # one behind latest for library compatibility
 
