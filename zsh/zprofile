@@ -6,3 +6,11 @@ fi
 
 # Machine-specific login settings (not committed)
 [[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"
+
+# Docker Desktop's CLI (~/.docker/bin) goes FIRST on PATH, so `docker` never depends on
+# OrbStack's /usr/local/bin/docker link. Placed after .zprofile.local so it wins over
+# anything added there. The two marker comments match Docker Desktop's own wording,
+# which should stop it from re-adding its version of this block on every launch.
+# The following lines were added by Docker Desktop to add commands to your PATH.
+[[ -d "$HOME/.docker/bin" ]] && export PATH="$HOME/.docker/bin:$PATH"
+# End of Docker Desktop section.
