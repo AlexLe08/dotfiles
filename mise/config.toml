@@ -7,8 +7,7 @@ node = "24"
 pnpm = "latest"
 python = "3.13"                 # one behind latest for library compatibility
 
-# Global CLIs pinned independently of Node (replaces Volta's global tools).
-# Add the ones from your `volta list all` inventory, e.g.:
+# Global CLIs pinned independently of Node, added when actually needed, e.g.:
 # "npm:typescript" = "latest"
 
 [settings]

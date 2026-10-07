@@ -1,6 +1,6 @@
 # Brewfile: everything this Mac should have installed.
 # Install:   brew bundle --no-upgrade --file=~/dotfiles/Brewfile
-# Check:     brew bundle check --verbose --file=~/dotfiles/Brewfile
+# Check:     brew bundle check --no-upgrade --verbose --file=~/dotfiles/Brewfile
 # Update:    brew bundle dump --force --file=~/dotfiles/Brewfile
 # Do NOT run `brew bundle cleanup --force` unless you mean to uninstall
 # everything that isn't listed here.

@@ -1,162 +1,181 @@
-# Mac Mini Web Development Setup Plan
+# Mac Development Setup
 
-Revision 2 (October 2026). This version reflects a machine that already has iTerm2, Oh My Zsh, Volta, and VS Code installed, and adds Postman, OrbStack, and Docker Desktop alongside the original recommendations.
+Revision 3 (October 2026). Rewritten after a full phase-by-phase setup of a Mac mini (macOS 26, Apple Silicon), so every step here has actually been run, and every gotcha below was actually hit.
 
-## How to use this document
+This document has two jobs:
 
-Work through the phases in order. Each phase ends with a **Verify** section. Don't start the next phase until every check passes. Several phases edit the same files (your shell config especially), and a problem caught early is a five-minute fix, while a problem caught three phases later is an archaeology project.
+1. **Rebuild a Mac from scratch** with this repo, in order, with a check after each phase.
+2. **Record why things are the way they are**, so future-you doesn't undo a decision without knowing what it was protecting against.
 
-The guiding principle: **everything should be reproducible.** As much as possible lives in the `~/dotfiles` repo (Brewfile, scripts, shell and Git config), so setting up the next Mac is a clone and a few commands, not an afternoon of clicking.
+## Principles
 
-## What's in the dotfiles repo
+- **Reproducible.** Apps, tools, and config live in this repo. Setting up a new Mac is a clone and a handful of commands, not an afternoon of clicking.
+- **Symlinked configs.** Files in `$HOME` are links into this repo. When a tool (or a third-party app) edits its config, the change shows up in `git status`. That visibility caught three apps editing these files during the original setup.
+- **`.local` files for anything machine-specific or private.** Never committed (`.gitignore` has `*.local`). Keeps the repo safe to make public.
+- **Verify every phase before starting the next.** A problem found right away is a minute's fix; found three phases later, it's an investigation.
+- **Stage by name, review, then commit.** `git add <file>`, `git diff --staged`, `git commit`. Not `git commit -am`, which sweeps in every modified tracked file, including edits an app made behind your back.
+- **If you can't explain why something is installed, it doesn't go in the Brewfile.**
+
+## What's in the repo
 
 | Path | Becomes | Purpose |
 |---|---|---|
-| `Brewfile` | n/a | Every CLI tool and app, installed with one command |
-| `bootstrap.sh` | n/a | Symlinks config files into `$HOME`, backing up anything it replaces |
+| `Brewfile` | n/a | Dev tools and apps, safe to publish |
+| `bootstrap.sh` | n/a | Symlinks configs into `$HOME`; backs up anything it replaces; has `--dry-run` |
 | `macos.sh` | n/a | macOS preferences via `defaults write` |
-| `zsh/zprofile` | `~/.zprofile` | Homebrew environment for login shells |
-| `zsh/zshrc` | `~/.zshrc` | Completions, history, mise, Starship, fzf, plugins |
-| `git/gitconfig` | `~/.gitconfig` | Shared Git behavior |
-| `git/gitconfig.local.example` | `~/.gitconfig.local` | Identity and signing (copied, never committed) |
+| `zsh/zprofile` | `~/.zprofile` | Login shells: Homebrew env, then `.zprofile.local`, then Docker Desktop's CLI first on PATH |
+| `zsh/zshrc` | `~/.zshrc` | Unique PATH, completions, history, editor, mise, Starship, fzf, plugins |
+| `git/gitconfig` | `~/.gitconfig` | Shared Git behavior (no identity) |
+| `git/gitconfig.local.example` | `~/.gitconfig.local` | Template for identity and signing (copied once, never committed) |
 | `git/gitignore_global` | `~/.gitignore_global` | macOS junk ignored in every repo |
-| `ssh/config` | `~/.ssh/config` | Loads your GitHub key from Keychain |
-| `ghostty/config` | `~/.config/ghostty/config` | Terminal font and behavior |
-| `mise/config.toml` | `~/.config/mise/config.toml` | Global Node, pnpm, Python versions |
-| `vscode/extensions.txt` | n/a | Editor extensions, installed with one command |
+| `ssh/config` | `~/.ssh/config` | Includes `~/.ssh/config.local`, then GitHub key + Keychain |
+| `ghostty/config` | `~/.config/ghostty/config` | Font, Option-as-Alt, theme |
+| `mise/config.toml` | `~/.config/mise/config.toml` | Global Node, pnpm, Python |
+| `vscode/extensions.txt` | n/a | Short core list of editor extensions |
 
-**Why symlinks instead of copies:** when a tool edits its own config (for example `mise use --global`), the change lands in the repo file through the link, so `git status` in `~/dotfiles` shows exactly what changed. Copies drift silently.
+**Not in the repo, on purpose:**
 
-**Why a `.local` file pattern:** your identity, machine-specific paths, and anything secret stay in `~/.gitconfig.local`, `~/.zshrc.local`, and `~/.zprofile.local`, which are never committed. That keeps the repo public-safe and lets anyone fork it.
+| File | Holds |
+|---|---|
+| `~/dotfiles/Brewfile.local` | Personal apps (media, chat, games). Backed up by Time Machine, not GitHub |
+| `~/.gitconfig.local` | Name, email, signing key, signing switches, `allowed_signers` path |
+| `~/.zprofile.local` | Machine-specific login settings (e.g. OrbStack's shell integration) |
+| `~/.zshrc.local` | Machine-specific interactive settings (currently unused) |
+| `~/.ssh/config.local` | Machine-specific SSH includes (e.g. OrbStack's `orb` host) |
 
 ## Decisions at a glance
 
-| Area | Choice | Alternatives considered | Why |
-|---|---|---|---|
-| Package manager | Homebrew + Brewfile | MacPorts, manual installs | Standard, covers CLI and GUI apps, declarative |
-| Terminal | Ghostty (iTerm2 kept during trial) | Terminal.app, iTerm2, Warp | Free, native, fast; Warp wants an account and cloud features |
-| Shell | Plain zsh + Starship + 2 plugins | Oh My Zsh, Prezto | Faster startup, you understand every line |
-| Runtimes | mise | nvm, fnm, Volta, brew Node | Fast, polyglot (Node + Python), per-project pins; Volta's maintainers point to mise |
-| JS package manager | pnpm (pinned per project) | npm, yarn, bun | Fast, disk-efficient, strict about phantom dependencies |
-| Editor | VS Code now, Cursor later | Zed, WebStorm | Ecosystem; Cursor imports VS Code setup in one click |
-| Git auth & signing | One SSH key for both | HTTPS, GPG, paid SSH agents | Simple, free, "Verified" badge on GitHub |
-| API client | Bruno (source of truth) + Postman (learning) | Insomnia | Bruno collections are files in your repo; Postman is industry-familiar |
-| Database GUI | Beekeeper Studio | TablePlus, DBeaver | Open source, light, no artificial limits |
-| Launcher & windows | Raycast | Spotlight, Alfred, Rectangle | One free app replaces three |
-| Containers | Colima (main), Docker Desktop + OrbStack (learning) | n/a | Colima has no license strings for a project seeking users |
+| Area | Choice | Why |
+|---|---|---|
+| Package manager | Homebrew + `Brewfile` / `Brewfile.local` | Declarative; two explicit files so personal apps never reach the public repo |
+| System tools vs language tools | Homebrew for system tools, **mise for language toolchains** | Always obvious where something came from; no "which Python is this?" |
+| Terminal | Ghostty (iTerm2 kept during a trial period) | Free, native, fast |
+| Shell | Plain zsh + Starship + 2 plugins (no Oh My Zsh) | You know what every line does |
+| Node | `node = "24"` (major pin), per-project `.nvmrc` | The `lts` alias moves on someone else's schedule (Node 26 becomes LTS in late 2026) |
+| JS package manager | pnpm globally; per project, whatever the lockfile says | Installing with the wrong one ignores the lockfile |
+| Editor | VS Code; Settings Sync is the source of truth; Cursor later | Sync covers settings, keybindings, snippets; `extensions.txt` is just the core |
+| Git auth + signing | One SSH key (passphrase + Keychain) for both | Simple, free, "Verified" on GitHub |
+| API client | Bruno for real work, Postman for familiarity | Bruno collections are readable YAML files in the repo |
+| Containers | **Colima** main; Docker Desktop and OrbStack for learning | Colima has no license strings for a project seeking users |
+| `docker` CLI | Docker Desktop's (`~/.docker/bin`), first on PATH | Doesn't depend on a learning tool staying installed |
+| Self-updating apps | **The app updates itself** | Two updaters means drift; macOS also blocks Homebrew from modifying some apps |
 
 ---
 
-## Phase 0: Baseline and inventory
+## Phase 0: Baseline
 
-### 0a. System Settings (by hand)
+### 0a. System Settings, by hand
 
-These are security-relevant one-time settings, better done in the GUI so you see what you're agreeing to.
+- **Software Update:** install everything pending first; enable automatic security responses.
+- **FileVault:** on. Store the recovery key off this Mac.
+- **Firewall:** on (Network → Firewall). Allow Node the first time a dev server listens.
+- **Caps Lock → Control:** System Settings → Keyboard → Modifier Keys, **unless Karabiner-Elements is running**. Karabiner routes the keyboard through a virtual device, so do the remap in Karabiner → Simple Modifications instead.
+- **Time Machine:** to an external drive.
 
-- **Software Update:** install pending updates; enable automatic security responses and system files.
-- **Privacy & Security > FileVault:** on. Store the recovery key somewhere other than this Mac.
-- **Network > Firewall:** on.
-- **Keyboard > Keyboard Shortcuts > Modifier Keys:** Caps Lock to Control (or Escape if you use Vim keys).
-- **Energy (optional):** "Prevent automatic sleeping when the display is off," useful for long-running local jobs.
-- **Time Machine:** back up to an external drive. Uncommitted work and local databases aren't on GitHub.
-
-### 0b. Inventory and backups
-
-You have existing tools, so record the current state before changing anything.
+### 0b. Inventory (when setting up a Mac that already has stuff on it)
 
 ```bash
 mkdir -p ~/setup-backup
 cp ~/.zshrc ~/.zprofile ~/.gitconfig ~/setup-backup/ 2>/dev/null
-ls -la ~/setup-backup
-
-sw_vers                      # macOS version
-uname -m                     # should print arm64 on Apple Silicon
-echo $SHELL                  # should be /bin/zsh
-brew --version               # is Homebrew already installed?
-brew list --cask             # apps brew already manages
-ls /Applications             # everything installed, brew or not
-volta list all               # global Node tools to recreate in mise
-git config --global --list   # current Git identity and settings
-ls -la ~/.ssh                # existing keys?
+uname -m                          # arm64
+brew --version                    # already installed?
+brew list --cask; ls /Applications
+brew leaves --installed-on-request   # formulae you asked for (not dependencies)
+volta list all 2>/dev/null        # old global Node tools, if any
+ls -la ~ | grep -E '\.(zshenv|zlogin|profile|bashrc|bash_profile)$'
 ```
 
-Save this output somewhere (a note is fine). You'll need the Volta list in Phase 6, and the Applications list tells you which apps need `--adopt` in Phase 2.
+`brew leaves --installed-on-request` is the inventory that matters. `brew list --formula` is mostly dependencies you never chose.
 
 ### Verify
 
 ```bash
-fdesetup status                                              # "FileVault is On."
-/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate   # "enabled"
-ls ~/setup-backup                                            # your backed-up files are there
+fdesetup status                                                    # FileVault is On.
+/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate   # enabled
 ```
 
 ---
 
 ## Phase 1: Homebrew
 
-If `brew --version` worked in Phase 0, skip the install and just run `brew update`.
-
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
-Don't add the `shellenv` line to `~/.zprofile` by hand. The dotfiles `zprofile` does it, and bootstrap installs that in Phase 4. The installer also pulls in Xcode Command Line Tools.
+On an existing install: `brew update`, then decide on upgrades. A one-time `brew upgrade` here is the right call: it's the cheapest moment to absorb breakage, and the only "upgrade everything" step in this plan.
+
+**Read `brew doctor` warnings rather than guessing.** For deprecated formulae, `brew info <name>` names the reason and usually the replacement (`tldr` → `tlrc`). Untrusted third-party taps: trust the narrowest thing you need (`brew trust --formula ...`), or untap. To remove an unknown formula, look first: `brew info <name>` and `brew deps --installed --direct <name>`, then `brew uninstall` + `brew autoremove`. Config files left in `/opt/homebrew/etc` after an uninstall are kept on purpose; delete them by hand if you're sure.
 
 ### Verify
 
 ```bash
-brew --version
-brew doctor          # "Your system is ready to brew." Warnings are worth reading, not always fatal
-xcode-select -p      # prints a path, e.g. /Library/Developer/CommandLineTools
-which brew           # /opt/homebrew/bin/brew
+which -a brew                 # only /opt/homebrew/bin/brew
+ls /usr/local/bin/brew 2>/dev/null && echo "INTEL BREW FOUND" || echo "clean"
+brew doctor                   # Your system is ready to brew.
+xcode-select -p               # CommandLineTools or Xcode.app, both fine
 ```
 
 ---
 
-## Phase 2: Dotfiles repo and Brewfile
+## Phase 2: This repo, then the Brewfiles
+
+### 2a. Get the repo
+
+The repo is private and SSH keys don't exist yet (Phase 5), so the first clone uses `gh` over HTTPS:
 
 ```bash
-# Unzip the dotfiles download into your home folder, then:
-cd ~/dotfiles
-git init
-git add -A && git commit -m "Initial dotfiles"
+brew install git gh
+gh auth login                                  # GitHub.com > HTTPS > browser login
+gh repo clone AlexLe08/dotfiles ~/dotfiles
 ```
 
-Git may complain about identity on that first commit since bootstrap hasn't run yet. If so, skip the commit; you'll make it in Phase 5.
+Keep dotfiles on the **internal drive**, at `~/dotfiles`. Every config in `$HOME` will link into it; on an external drive, an unmounted or slow-mounting disk silently breaks your shell, Git and SSH, and the mount path can change.
 
-### Adopt apps you installed manually
+### 2b. Recreate `Brewfile.local`
 
-`brew bundle` can't install over an app that was dragged into Applications. Adopt those apps instead, so brew takes over updates without touching your settings (settings live in `~/Library`, not inside the `.app`).
+It's not on GitHub. Restore it from Time Machine, or rewrite it:
+
+```ruby
+# Brewfile.local: personal apps for THIS machine. Not committed (see .gitignore).
+# Install: brew bundle --no-upgrade --file=~/dotfiles/Brewfile.local
+cask "keka"
+cask "sublime-text"
+cask "vesktop"
+cask "vlc"
+```
+
+### 2c. Adopt apps already installed by hand
+
+`brew bundle` fails on apps dragged into `/Applications`. Adopt them so Homebrew tracks them without touching settings (settings live in `~/Library`). Quit each app first; run one at a time.
 
 ```bash
 brew bundle check --verbose --file=~/dotfiles/Brewfile   # lists what's missing
-
-# For each app that exists in /Applications but not in `brew list --cask`:
-brew install --cask --adopt visual-studio-code
-brew install --cask --adopt iterm2
-# ...and so on
+brew install --cask --adopt visual-studio-code           # repeat per app
 ```
 
-If adopt reports a version mismatch, update the app first, or use `--force` to let brew replace it.
+On a version mismatch: update the app with its own updater and retry; `--force` only if that fails.
 
-### Install everything else
+### 2d. Install
 
 ```bash
-brew bundle --no-upgrade --file=~/dotfiles/Brewfile
+cd ~/dotfiles
+brew bundle install --no-upgrade --file=Brewfile
+brew bundle install --no-upgrade --file=Brewfile.local
 ```
 
-`--no-upgrade` avoids surprise upgrades of tools you already rely on. This installs mise, Starship, and the zsh plugins, but nothing activates them until Phase 4, so your current shell keeps working exactly as before.
+**Ignore install caveats** telling you to edit `.zshrc` (zsh plugins) or `brew services start colima`. The repo's `zshrc` handles the plugins, and Colima is configured in Phase 9. **Don't launch OrbStack yet** (Phase 9).
 
-Never run `brew bundle cleanup --force` unless you intend to uninstall everything not in the Brewfile.
+`mise` prints a hint suggesting its own binary instead of Homebrew's. Measured on this machine: `mise hook-env` costs about 30ms per prompt, and Starship (about 43ms) is the larger cost. Keep Homebrew's.
 
 ### Verify
 
 ```bash
-brew bundle check --file=~/dotfiles/Brewfile   # "The Brewfile's dependencies are satisfied."
-mise --version
-starship --version
-ls /Applications | grep -iE "ghostty|raycast|bruno|postman|beekeeper|orbstack|docker"
+brew bundle check --no-upgrade --file=Brewfile          # satisfied
+brew bundle check --no-upgrade --file=Brewfile.local    # satisfied
+mise --version && starship --version && colima version
+brew doctor
+git status                                              # clean
 ```
 
 ---
@@ -164,284 +183,382 @@ ls /Applications | grep -iE "ghostty|raycast|bruno|postman|beekeeper|orbstack|do
 ## Phase 3: macOS defaults
 
 ```bash
-cd ~/dotfiles
-less macos.sh        # read it first
-chmod +x macos.sh
-./macos.sh
+mkdir -p ~/setup-backup/defaults
+for d in NSGlobalDomain com.apple.finder com.apple.dock com.apple.screencapture com.apple.desktopservices; do
+  defaults export "$d" ~/setup-backup/defaults/"$d".plist
+done
+less macos.sh && ./macos.sh
 ```
 
-Then log out and back in.
+Then log out and back in (key repeat needs it).
 
-Two notes. Disabling press-and-hold removes the accent popup (é, ñ); delete that line if you need accents. Hidden files are not shown by default on purpose; toggle them with **Cmd+Shift+.** in Finder.
+**Manual step, every time:** Cmd+Shift+5 → Options → Other Location → `~/Screenshots`. Setting the location with `defaults write` broke screenshots on macOS 26 ("Unable to capture desktop image"); choosing it in the UI works, most likely because the UI grants folder access.
+
+"Keep folders on top" only applies to windows **sorted by name**; Downloads sorts by Date Added, so it mixes. That's expected.
 
 ### Verify
 
 ```bash
-defaults read NSGlobalDomain AppleShowAllExtensions          # 1
-defaults read NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled   # 0
-defaults read com.apple.screencapture location               # /Users/<you>/Screenshots
+defaults read NSGlobalDomain AppleShowAllExtensions                 # 1
+defaults read NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled    # 0
+defaults read com.apple.desktopservices DSDontWriteUSBStores        # 1
 ```
 
-Take a screenshot (Cmd+Shift+3); it should land in `~/Screenshots`. Hold down a letter key in any text field; it should repeat quickly.
+By hand: Cmd+Shift+3 saves to `~/Screenshots`; holding a key repeats; `"quotes"` stay straight in TextEdit; Dock hides.
 
 ---
 
-## Phase 4: Shell migration (Volta out, Oh My Zsh out, new config in)
+## Phase 4: Shell
 
-This is the riskiest phase, so: **keep one terminal window open the whole time** as a lifeline, and do every test in a *new* window.
+Keep one terminal window open and untouched as a lifeline; test everything in **new** windows.
 
-Order matters. Volta and Oh My Zsh both edit shell config, so remove both, then install the new config once.
-
-### 4a. Measure the "before"
+### 4a. Migrating from Oh My Zsh and/or Volta (skip on a clean Mac)
 
 ```bash
-time zsh -i -c exit          # note the "total" number
-grep -E '^(plugins|ZSH_THEME)' ~/.zshrc
-grep -E '^(alias|export)' ~/.zshrc ~/.zprofile
+time zsh -i -c exit                   # before-number (run 3x, use the warm ones)
+find ~/.oh-my-zsh/custom -type f ! -name "example*"   # custom files OMZ auto-loads
+grep -c "git " ~/.zsh_history          # sanity check for the alias count below
+for a in $(alias | grep -E "^g[a-z0-9]*='git" | cut -d= -f1); do
+  c=$(grep -cE "(^|;)${a}( |$)" ~/.zsh_history 2>/dev/null); [ "$c" -gt 0 ] && echo "$c $a"
+done | sort -rn | head -15             # OMZ git aliases you actually use
 ```
 
-The `plugins=(...)` line matters. The Oh My Zsh `git` plugin provides about 150 aliases (`gst`, `gco`, `gp`...). Write down the few you actually type; you'll add only those back. Copy any custom `export` lines (other than Volta and Oh My Zsh ones) for later.
-
-### 4b. Remove Volta
-
-Volta has no uninstall command.
+Then remove them:
 
 ```bash
-brew uninstall volta 2>/dev/null   # only matters if it was a brew install
-rm -rf ~/.volta
+rm -rf ~/.volta                        # Volta has no uninstaller
+cat ~/.zshenv ~/.profile               # Volta's installer writes PATH lines here
+rm ~/.zshenv ~/.profile                # only if that's ALL they contain
+rm -rf ~/.oh-my-zsh
+rm -f ~/.zcompdump*                    # stale completion cache from OMZ
 ```
 
-You don't need to hand-edit the `VOLTA_HOME` lines in `.zshrc` / `.zprofile`; bootstrap replaces both files in 4d (and backs up the originals).
+Check projects for `"volta"` pins first (mise doesn't read that field):
+`grep -rl '"volta"' <projects-dir> --include=package.json --exclude-dir=node_modules`.
 
-Check projects for pinned versions. mise does not read the `"volta"` field in `package.json`:
+Removing Volta also removes its global tools (e.g. CLIs installed with `npm i -g`). Their config folders in `~` stay.
 
-```bash
-grep -rl '"volta"' ~/path/to/your/projects --include=package.json
-```
-
-For each match, note the Node version. In Phase 6 you'll add a `mise.toml` or `.node-version` to that project.
-
-### 4c. Remove Oh My Zsh
-
-```bash
-uninstall_oh_my_zsh
-```
-
-It may restore an old `~/.zshrc.pre-oh-my-zsh`. That's fine; bootstrap backs it up and replaces it next. If you used Powerlevel10k, its config file (`~/.p10k.zsh`) can be deleted; Starship replaces it.
-
-### 4d. Install the new config
+### 4b. Bootstrap
 
 ```bash
 cd ~/dotfiles
-chmod +x bootstrap.sh
-./bootstrap.sh --dry-run     # read what it WOULD do
-./bootstrap.sh               # do it
+./bootstrap.sh --dry-run
+./bootstrap.sh
 ```
 
-Bootstrap moves anything it replaces into `~/.dotfiles-backup/<timestamp>/`. Diff those backups against the new files and move anything you still need (custom exports, the aliases you wrote down) into `~/.zshrc.local`, or into `zsh/zshrc` itself if it belongs on every machine.
-
-### 4e. Ghostty
-
-Open Ghostty. The dotfiles config already sets the Nerd Font so Starship's icons render. Keep iTerm2 installed for a week or two; your shell config is shared between them. When you're done with iTerm2: export your profile (Settings > Profiles > Other Actions > Save Profile as JSON), then `brew uninstall --cask iterm2`, delete `~/Library/Preferences/com.googlecode.iterm2.plist`, and remove the `iterm2` line from the Brewfile.
-
-### Verify (in a NEW Ghostty window)
+**Immediately** restore your Git identity, before any commit. Bootstrap replaced `~/.gitconfig`:
 
 ```bash
-ls -la ~/.zshrc ~/.zprofile ~/.gitconfig     # all point into ~/dotfiles
-echo $HOMEBREW_PREFIX                        # /opt/homebrew
-ls ~/.oh-my-zsh ~/.volta 2>&1                # both "No such file or directory"
-time zsh -i -c exit                          # compare to the "before"
+git config --file ~/.gitconfig.local user.name  "$(git config --file ~/setup-backup/.gitconfig user.name)"
+git config --file ~/.gitconfig.local user.email "$(git config --file ~/setup-backup/.gitconfig user.email)"
 ```
 
-Also check by hand: the Starship prompt shows; typing `git ch` then Tab completes; Ctrl+R opens fuzzy history; a gray autosuggestion appears as you type a previous command. mise may warn about missing tools; that's expected until Phase 6.
+On a fresh Mac, set them directly with `git config --file ~/.gitconfig.local user.name "..."`. Use your GitHub noreply address. Always write identity with `--file ~/.gitconfig.local`; `--global` writes into the repo through the symlink.
+
+If `git init` runs before bootstrap, the branch is `master`: `git branch -m master main`.
+
+### 4c. Ghostty
+
+Open Ghostty; the config is already linked. **Ghostty only allows comments on their own line.** A trailing `# comment` becomes part of the value and makes the setting invalid. Always run `ghostty +validate-config` after editing.
+
+`macos-option-as-alt = left` lets left Option act as Alt (Option+. inserts the previous command's last argument) while right Option still types `é ©`. Option+←/→ word-jumping works either way, so it's not a test of this setting.
+
+Keep iTerm2 for a week or two, then: export its profile, `brew uninstall --cask iterm2`, delete `~/Library/Preferences/com.googlecode.iterm2.plist`, and remove its Brewfile line.
+
+When SSHing into servers, `TERM=xterm-ghostty` may be unknown there ("unknown terminal type"). Ghostty's shell-integration options can handle this; set it up when you first hit it.
+
+### Verify (new window)
+
+```bash
+ls -la ~/.zshrc ~/.zprofile ~/.gitconfig ~/.ssh/config     # all -> ~/dotfiles/...
+echo $PATH | tr ':' '\n' | sort | uniq -d                  # prints nothing
+git config user.email && git config init.defaultBranch     # your noreply / main
+ghostty +validate-config && echo "config valid"
+for i in 1 2 3; do time zsh -i -c exit; done
+echo hi   # comment                                         # prints just: hi
+```
+
+By hand: Starship prompt; `git ch<Tab>` completes; Ctrl+R opens fzf; gray autosuggestions; `ls` green, `lss` red.
+
+**Startup time:** about 200ms warm on this machine, and accepted. Profiling showed `compinit` dominates; the completion cache is reused normally (it's rebuilt once whenever the set of completion files changes, which is the 500ms first run you'll sometimes see). Ruled out: working directory, Docker completions, a running Colima VM. If it gets noticeably worse, profile it (see Troubleshooting).
 
 ---
 
-## Phase 5: Git, SSH, GitHub
+## Phase 5: SSH key, GitHub, signing
 
-### Identity
-
-Edit `~/.gitconfig.local` (created by bootstrap). Use your GitHub noreply address (GitHub > Settings > Emails) so your real email isn't in public commit history.
-
-From now on, write identity with `git config --file ~/.gitconfig.local ...`. Plain `git config --global` writes to `~/.gitconfig`, which is now a symlink into your repo.
-
-### SSH key
-
-Skip key generation if Phase 0 showed an existing `id_ed25519` you want to keep.
+### 5a. Key
 
 ```bash
-ssh-keygen -t ed25519 -C "your-noreply-email"
+ssh-keygen -t ed25519 -C "<your-noreply-email>"     # default path; SET a passphrase
 ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 ```
 
-### GitHub
+A passphrase protects every copy of the key, including Time Machine's. The Keychain means you won't retype it.
+
+Never reuse a CI deploy key (e.g. `github-actions-deploy`) as a personal key.
+
+### 5b. GitHub
 
 ```bash
-gh auth login                                        # GitHub.com > SSH > choose your key
-gh auth refresh -h github.com -s admin:ssh_signing_key
-gh ssh-key add ~/.ssh/id_ed25519.pub --type signing
+gh auth refresh -h github.com -s admin:public_key,admin:ssh_signing_key
+gh config set git_protocol ssh
+gh ssh-key add ~/.ssh/id_ed25519.pub --type authentication --title "Mac mini"
+gh ssh-key add ~/.ssh/id_ed25519.pub --type signing --title "Mac mini (signing)"
+git -C ~/dotfiles remote set-url origin git@github.com:AlexLe08/dotfiles.git
 ```
 
-Now uncomment the `[commit]` and `[tag]` signing blocks in `~/.gitconfig.local`. Doing this before the key exists makes every commit fail, which is why it's off by default.
+The first SSH connection asks you to confirm GitHub's host key. Compare it to GitHub's published fingerprints (ED25519: `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`) before typing yes.
 
-On `pull.rebase = true`: rebase-on-pull keeps history linear. If rebase conflicts make you uneasy, change it to `[pull] ff = only`, which refuses to pull when branches diverge and lets you decide.
+### 5c. Signing
+
+```bash
+git config --file ~/.gitconfig.local commit.gpgsign true
+git config --file ~/.gitconfig.local tag.gpgSign true
+echo "$(git config user.email) $(cat ~/.ssh/id_ed25519.pub)" > ~/.ssh/allowed_signers
+git config --file ~/.gitconfig.local gpg.ssh.allowedSignersFile ~/.ssh/allowed_signers
+```
+
+Turn signing on only **after** the key exists; before that, every commit fails. If signing later fails or asks for the passphrase (e.g. after a restart): `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`.
+
+### 5d. Retire old keys
+
+Order matters: add the new key, **verify** (push something and see "Verified"), then `gh ssh-key delete <id>` and delete the old files. Revoking on GitHub is what makes old copies (e.g. in backups) useless.
 
 ### Verify
 
 ```bash
-git config user.email                  # your noreply address
-ssh -T git@github.com                  # "Hi <username>! You've successfully authenticated..."
-gh auth status
-cd ~/dotfiles && git add -A && git commit -m "Initial dotfiles"
-git cat-file -p HEAD | grep -c gpgsig  # 1 = the commit is signed
+ssh -T git@github.com                                  # Hi <username>!
+ssh -vT git@github.com 2>&1 | grep -iE "offering|authenticated"   # offers id_ed25519
+git --no-pager log --show-signature -1                 # Good "git" signature
+gh ssh-key list                                        # only current keys
 ```
 
-Create a private `dotfiles` repo on GitHub (`gh repo create dotfiles --private --source=. --push`), open the commit on GitHub, and look for the "Verified" badge. Make it public later once you've confirmed nothing personal is in it.
+On GitHub, the latest commit shows **Verified**. Older unsigned commits show no badge; don't rewrite history to sign them.
 
 ---
 
 ## Phase 6: Runtimes with mise
 
-The dotfiles already declare Node LTS, pnpm, and Python 3.13 in `mise/config.toml`. Install them:
-
 ```bash
+mise doctor          # "problems" before install are just "not installed yet"
 mise install
 ```
 
-### Recreate global tools from Volta
+`mise doctor` reporting "tool X is not installed" before `mise install` is the expected state, not an error.
 
-Use the `volta list all` output from Phase 0. Prefer mise's npm backend over `npm i -g`: npm globals are tied to one Node version and vanish when you upgrade Node, while `npm:` tools are pinned independently (Volta's best feature, kept).
-
-```bash
-mise use --global npm:typescript     # repeat for each global tool you had
-```
-
-These edit `mise/config.toml` through the symlink, so commit them in `~/dotfiles`.
-
-### Migrate Volta-pinned projects
-
-For each project that had a `"volta"` field:
+**Per project:** add a version pin if missing. `.nvmrc` rather than `mise.toml`, because every Node tool and CI service reads `.nvmrc`:
 
 ```bash
-cd ~/path/to/project
-mise use node@20.11.1        # the version Volta had pinned; writes mise.toml
+echo "24" > .nvmrc
 ```
 
-Commit that `mise.toml` to the project. Projects with `.nvmrc` or `.node-version` need nothing; the dotfiles config tells mise to read them.
+mise reads `.nvmrc` / `.node-version` / `.python-version` because of `idiomatic_version_file_enable_tools` in `mise/config.toml`; recent mise versions don't by default. Use the package manager matching the lockfile (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm). Projects on Node 20 are past end-of-life (April 2026): bump them to 24 and run their tests.
 
-### pnpm per project
+Global CLIs that should survive Node upgrades: `mise use --global npm:<package>`. Python tooling (`uv`): `mise use --global uv` when a Python project needs it, not before.
 
-Pin the package manager in each project's `package.json` with the `packageManager` field (e.g. `"packageManager": "pnpm@10.x.x"`), so every contributor uses the same version. Stay comfortable with npm too; most docs use it.
-
-**Rule going forward:** never `sudo npm install -g`.
+Never `sudo npm install -g`.
 
 ### Verify
 
 ```bash
-mise doctor          # no errors
-mise ls              # node, pnpm, python marked active
-which node           # a path under ~/.local/share/mise, NOT .volta
-node -v && pnpm -v && python --version
-tsc -v               # (or whichever globals you recreated)
+mise doctor                  # No problems found
+mise ls                      # node 24.x, pnpm, python 3.13
+which -a python3             # mise's first, /usr/bin/python3 last
 ```
 
-Then `cd` into a Volta-pinned project and confirm `node -v` matches its pinned version.
+Then in a real project: `mise ls --current`, `node -v` matches its pin, install, run the dev server.
 
 ---
 
 ## Phase 7: Editor
 
+**Settings Sync is the source of truth** (Accounts icon → Backup and Sync Settings, GitHub). `vscode/extensions.txt` is a short core list for bootstrapping, not a mirror:
+
 ```bash
 xargs -L1 code --install-extension < ~/dotfiles/vscode/extensions.txt
 ```
 
-Sign in to Settings Sync (Accounts icon, bottom left) with GitHub. Skip the Tailwind extension if you don't use Tailwind.
+Removed during setup, and why: `vs-code-prettier-eslint` (double-formats alongside the separate Prettier and ESLint extensions), Live Server (unmaintained; Vite does it), Code Runner (runs outside the project's environment), Auto Rename Tag, Trailing Spaces and color extensions (built into VS Code now). Tailwind's extension belongs in a project's `.vscode/extensions.json` recommendations, not the core list.
 
-Lint and format **rules** belong in each project's repo (`eslint.config.js`, `.prettierrc`, `.editorconfig`), not in editor settings. The editor only reads them. That's what makes switching to Cursor painless later.
+Key user settings (Settings Sync carries these):
 
-**Cursor, later:** uncomment `cask "cursor"` in the Brewfile and run `brew bundle`. On first launch it imports your VS Code extensions and settings. It uses the Open VSX registry, so a few Microsoft-owned extensions aren't available; everything here is fine. When it becomes your daily editor, change `core.editor` in `git/gitconfig` to `cursor --wait`.
+```json
+"[javascript][typescript][javascriptreact][typescriptreact][json][jsonc][css][scss][html][markdown]": {
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+},
+"editor.formatOnSave": true,
+"prettier.requireConfig": true,
+"files.autoSave": "onFocusChange",
+"editor.linkedEditing": true,
+"files.trimTrailingWhitespace": true,
+"files.insertFinalNewline": true,
+"editor.renderWhitespace": "trailing",
+"[markdown]": { "files.trimTrailingWhitespace": false },
+"terminal.integrated.fontFamily": "JetBrainsMono Nerd Font"
+```
 
-**Optional AI completion:** GitHub Copilot's free tier needs only a GitHub account.
+Why: Prettier is set **per language**, not globally, so Python files don't hit a formatter that can't handle them. `requireConfig` stops Prettier reformatting projects that don't use it. `onFocusChange` instead of `afterDelay`, because format-on-save does **not** run on `afterDelay` auto-saves. The Markdown exception exists because two trailing spaces are a line break there.
+
+**Cursor later:** uncomment its Brewfile line; it imports VS Code's setup in one click; it uses Open VSX, so some Microsoft extensions aren't available. Change `core.editor` and `EDITOR` to `cursor --wait` in the same commit.
 
 ### Verify
 
 ```bash
-code --list-extensions       # matches extensions.txt
-git config core.editor       # code --wait
+git commit --allow-empty      # in a scratch repo: VS Code opens; closing the tab finishes the commit
 ```
 
-Run `git commit` with no `-m` in a test repo; VS Code should open the message, and closing the tab should complete the commit.
+Prettier test with a `.ts` file: blank lines are cleaned in a project with a Prettier config, untouched in one without.
 
 ---
 
 ## Phase 8: Browsers and tools
 
-- **Chrome:** primary DevTools, and what most users run.
-- **Firefox Developer Edition:** best CSS Grid and Flexbox inspectors; your second engine.
-- **Safari:** Settings > Advanced > "Show features for web developers." Every iOS browser is WebKit, so Safari testing is mobile testing.
-- **Bruno:** source of truth for API requests. Store collections inside each project repo.
-- **Postman:** for learning and familiarity. It needs a free account and syncs to the cloud by default, so **never put real API keys or tokens in shared environment values**; use Postman's Vault or keep secrets in Bruno and `.env`. Bruno can import Postman collections.
-- **Beekeeper Studio:** database GUI for Postgres, MySQL, SQLite.
-- **Raycast:** set it as the Cmd+Space launcher (disable Spotlight's shortcut in System Settings > Keyboard > Keyboard Shortcuts > Spotlight first). Under Extensions > Window Management, bind snapping shortcuts you'll remember. Enable Clipboard History.
-
-### Verify
-
-Open each app once and get past its first-run screens. In Safari, confirm the Develop menu appears. In Raycast, confirm Cmd+Space opens it and a window-snap shortcut works.
+- **Safari:** Settings → Advanced → "Show features for web developers". Every iOS browser is WebKit.
+- **Bruno:** collections are folders of YAML (`opencollection.yml` plus one `.yml` per request), stored inside each project repo. Name requests in kebab-case so files have no spaces. `timeout: 0` means no timeout; set one for real collections.
+- **Postman:** free account. It syncs to the cloud; never store real secrets in environment values (use Vault, or `.env` + Bruno).
+- **Beekeeper Studio:** SQLite or Postgres (Phase 9).
+- **Raycast:** free Cmd+Space from Spotlight first (Keyboard Shortcuts → Spotlight), then set Raycast's hotkey. Bind window-management hotkeys. Clipboard History records everything you copy, including API keys: exclude password managers and keep history short.
 
 ---
 
 ## Phase 9: Containers
 
-All three engines can coexist. The key concept: **`docker` is only a client.** Docker Desktop, OrbStack, and Colima are three separate engines, each in its own VM. The CLI picks one through **contexts**. Docker Desktop provides the CLI, Compose, and Buildx, and all three engines use it.
+The `docker` command is only a client. Docker Desktop, OrbStack and Colima are separate engines, each in its own VM, with **separate images, containers and volumes**. The CLI picks one via **contexts**. Run one engine at a time (port clashes, RAM).
+
+### 9a. Colima (main engine)
 
 ```bash
-# Colima first, since it's your main engine
-colima start --cpu 4 --memory 4 --vm-type vz
-docker context use colima
-docker run --rm hello-world
+colima start \
+  --vm-type vz \
+  --mount-type virtiofs \
+  --cpu 4 \
+  --memory 4 \
+  --ssh-config=false \
+  --mount "$HOME:w" \
+  --mount "/Volumes/<YourSSD>:w"
 ```
 
-Then open Docker Desktop and OrbStack once each to finish their setup. In both, **turn off "start at login"**.
+- Specifying any `--mount` replaces Colima's default home-folder mount, so list `$HOME` too. Without the SSD mount, containers see empty folders for projects on the external drive.
+- `--ssh-config=false` stops Colima adding an `Include` to `~/.ssh/config` (which is in this repo) on every start. If your Colima version rejects the flag, set `sshConfig: false` in `~/.colima/default/colima.yaml`.
+- Settings are saved; later, plain `colima start` / `colima stop`. Don't start it at login.
 
-Gotchas, in order of how likely they are to confuse you:
+Test the SSD mount reads **and** writes:
 
-1. **Separate data.** Images, containers, and volumes don't cross engines. An "empty" database usually means the wrong context. Check `docker context show` first.
-2. **Port collisions.** Two engines can't both bind 5432. Run one at a time.
-3. **RAM.** Each VM reserves memory. Quit engines you aren't using: `colima stop`, and quit the Docker Desktop / OrbStack apps.
-4. **Licensing.** OrbStack is free for personal learning only. Keep your real project's README on Colima (or Docker Desktop under its free terms) so contributors never hit a license wall.
+```bash
+T="/Volumes/<YourSSD>/colima-mount-test"; mkdir -p "$T" && echo "from mac" > "$T/in.txt"
+docker run --rm -v "$T:/data" alpine sh -c 'cat /data/in.txt && echo "from container" > /data/out.txt'
+cat "$T/out.txt"; rm -rf "$T"
+```
+
+### 9b. A real database
+
+```yaml
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: playground
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d playground"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+volumes:
+  pgdata:
+```
+
+Pin the major version (new majors can't read old data). Bind ports to `127.0.0.1` so the database isn't on your network. Postgres 18's image mounts at `/var/lib/postgresql` (older guides show `.../data`). Real credentials go in a gitignored `.env`. `docker compose down` keeps data; **`down -v` deletes it**. `psql` uses a pager: add `-P pager=off`.
+
+### 9c. Docker Desktop and OrbStack (learning)
+
+- Turn off **start at login** in both. Docker Desktop: Resources → Memory 4 GB.
+- OrbStack: decline its offer to migrate Docker Desktop data.
+- **Docker Desktop switches the context to itself on launch and doesn't switch back on quit.** After any Desktop or OrbStack session: quit the app, then `colima start` or `docker context use colima`.
+- Both apps edit shell and SSH files on launch. Because those files are symlinks into this repo, you'll see it in `git status`. How each is handled:
+
+| Edit | By | Where it lives now |
+|---|---|---|
+| PATH line for `~/.docker/bin` | Docker Desktop | `zsh/zprofile`, prepended and guarded, wrapped in Docker Desktop's own marker comments. With its markers present, Desktop stops re-adding its block (tested) |
+| Completions block (runs `compinit` again) | Docker Desktop | Replaced by one guarded `FPATH` line in `zsh/zshrc` before the single `compinit` |
+| `source ~/.orbstack/shell/init.zsh` | OrbStack | `~/.zprofile.local` |
+| `Include ~/.orbstack/ssh/config` | OrbStack | `~/.ssh/config.local` |
+| `Include ~/.colima/ssh_config` | Colima | Removed; `--ssh-config=false` |
+
+OrbStack also points `/usr/local/bin/docker` at itself. Docker Desktop's CLI being first on PATH means `docker` keeps working if OrbStack is ever uninstalled.
+
+If a tool reports "Cannot connect to the Docker daemon" while `docker ps` works in the terminal, it's ignoring contexts and using `/var/run/docker.sock`. Point that tool at Colima's socket (`docker context ls` shows it).
 
 ### Verify
 
 ```bash
-docker context ls                     # colima, desktop-linux, orbstack all listed
-docker context use colima && docker run --rm hello-world
-docker compose version
-colima stop
+which -a docker                 # ~/.docker/bin/docker first
+docker context show             # colima
+docker context ls               # colima, default, desktop-linux, orbstack
+git -C ~/dotfiles status --short   # empty, even after launching Desktop/OrbStack and restarting Colima
 ```
-
-Then, with only that engine running, repeat `docker context use <name> && docker run --rm hello-world` for `orbstack` and `desktop-linux`.
 
 ---
 
-## Phase 10: Final check and push
+## Phase 10: Final check and upkeep
 
 ```bash
 brew doctor
-brew bundle check --file=~/dotfiles/Brewfile
-mise doctor
+brew bundle check --no-upgrade --file=~/dotfiles/Brewfile
+brew bundle check --no-upgrade --file=~/dotfiles/Brewfile.local
+mise doctor | tail -1
 ssh -T git@github.com
 docker context show
-cd ~/dotfiles && git status            # clean, or commit what changed
-git push
+git -C ~/dotfiles status -sb        # ## main...origin/main
 ```
 
-### Keeping it current
+### Upkeep
 
-- Installed something new with brew? `brew bundle dump --force --file=~/dotfiles/Brewfile`, review the diff, commit.
-- Changed a global runtime? `mise use --global ...` already edited the repo; commit.
-- New Mac? Install Homebrew, clone `~/dotfiles`, then `brew bundle`, `./macos.sh`, `./bootstrap.sh`, create `~/.gitconfig.local`, and generate an SSH key.
+- **New brew package:** add it to the right Brewfile by hand (or `brew bundle dump --force` and sort the result), review, commit.
+- **Self-updating apps** (VS Code, Postman, Chrome...) update themselves. `brew outdated --greedy` will list them anyway; plain `brew outdated` is the check that matches this policy.
+- **Homebrew can't modify some apps** when run from a terminal without macOS's **App Management** permission (`chown: ... Operation not permitted`). Prefer the app's own updater. Granting App Management to the terminal lets *any* command there modify apps; only do it if you truly need it.
+- **After launching Docker Desktop or OrbStack:** `git -C ~/dotfiles status` and `docker context use colima`.
+- **Committing:** `git add <file>`, `git diff --staged`, `git commit`, `git push`. Starship's `⇡` means unpushed commits.
 
-### Rollback
+---
 
-- Shell broken: `rm ~/.zshrc && cp ~/setup-backup/.zshrc ~/.zshrc`, or restore from `~/.dotfiles-backup/<timestamp>/`. Always `rm` the symlink first: copying onto a symlink writes *through* it and overwrites the file in your repo.
-- A macOS default you dislike: `defaults delete <domain> <key>` restores the system default, e.g. `defaults delete com.apple.dock autohide`, then `killall Dock`.
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `extra command-line argument "#"`, or words after `#` passed to a command | zsh doesn't allow comments in typed commands by default | `setopt INTERACTIVE_COMMENTS` (in `zshrc`) |
+| Ghostty: `invalid value "true  # ..."` | Ghostty doesn't support end-of-line comments | Comments on their own line; `ghostty +validate-config` |
+| Command output takes over the screen; `q` to quit | A pager (`less`) | `git --no-pager ...`, `psql -P pager=off` |
+| `zsh: no matches found: ~/.zcompdump*` | zsh errors on wildcards that match nothing | Means there's nothing there |
+| Screenshot: "Unable to capture desktop image" | Location set with `defaults write` | Set it via Cmd+Shift+5 → Options |
+| Duplicate PATH entries | `/etc/paths.d/homebrew` plus `brew shellenv` | `typeset -U path PATH`; leave the system file alone |
+| Shell edits appear in `git status` you didn't make | An app edited a symlinked config | Diff it, `git restore`, move the line to a `.local` file |
+| Docker commands fail after using Docker Desktop | Context left on `desktop-linux` | `docker context use colima` |
+| Containers see empty project folders | Path not mounted into Colima's VM | `--mount "/Volumes/<YourSSD>:w"` (plus `$HOME:w`) |
+| `brew upgrade` on an app: `Operation not permitted` | macOS App Management protection | Use the app's own updater |
+| Global Node version changed by itself | `node = "lts"` follows new LTS releases | Pin a major: `node = "24"` |
+| An app's change landed in an unrelated commit | `git commit -am` stages everything | Stage by name; review `--staged` |
+| Shell startup got slower | Usually `compinit` | Profile (below) |
+
+**Profiling shell startup** (temporary edit, undone by Git):
+
+```bash
+cd ~/dotfiles
+{ echo 'zmodload zsh/zprof'; cat zsh/zshrc; echo 'zprof | head -20'; } > /tmp/zshrc.prof
+cat /tmp/zshrc.prof > zsh/zshrc
+zsh -i -c exit
+git restore zsh/zshrc
+```
+
+`zprof` measures shell functions only; the `eval "$(...)"` lines run separate programs, so time those individually with `time (mise activate zsh >/dev/null)` and similar. Per-prompt costs (`mise hook-env`, `starship prompt`) matter more than startup, since you pay them after every command.
+
+## Rollback
+
+- **Shell config:** `rm ~/.zshrc && cp ~/.dotfiles-backup/<timestamp>/.zshrc ~/.zshrc`. Always `rm` the symlink first: copying onto a symlink writes *through* it into the repo.
+- **macOS defaults:** `defaults delete <domain> <key>` for one setting; `defaults import <domain> ~/setup-backup/defaults/<domain>.plist` for a whole domain.
+- **Any repo file:** `git restore <file>` (uncommitted) or `git revert <commit>` (committed).
