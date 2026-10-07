@@ -1,3 +1,5 @@
+Include /Users/lami/.colima/ssh_config
+
 # ~/.ssh/config. Managed in ~/dotfiles/ssh/config
 # Config only. Private keys NEVER go in the dotfiles repo.
 

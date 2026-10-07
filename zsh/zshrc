@@ -2,7 +2,7 @@
 # Every tool is guarded, so a missing tool never breaks the shell.
 
 typeset -U path PATH        # keep PATH entries unique, whatever adds them
- 
+
 # ---- Completions (Oh My Zsh used to do this for you) ----
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
   FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:$FPATH"
@@ -14,6 +14,7 @@ HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
 SAVEHIST=50000
 setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_REDUCE_BLANKS
+setopt INTERACTIVE_COMMENTS   # allow "# comments" in typed/pasted commands (OMZ set this for us)
 
 # ---- Editor ----
 export EDITOR="code --wait"
