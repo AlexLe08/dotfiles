@@ -36,6 +36,9 @@ cask "visual-studio-code"
 # ---- Productivity ----
 cask "raycast"                  # launcher + window management + clipboard history
 
+# Local LLM runtime for development (free, no API spend). Run on demand: `ollama serve`.
+brew "ollama"
+
 # ---- Browsers ----
 cask "google-chrome"
 cask "firefox@developer-edition"
