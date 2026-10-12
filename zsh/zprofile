@@ -4,6 +4,11 @@ if [[ -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
+# Claude Code is a Homebrew cask, which doesn't self-update. This lets Claude Code
+# run `brew upgrade claude-code` itself when a new stable version ships, so the
+# app triggers its own updates through Homebrew (one updater, no drift).
+export CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE=1
+
 # Machine-specific login settings (not committed)
 [[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"
 

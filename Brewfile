@@ -39,6 +39,9 @@ cask "raycast"                  # launcher + window management + clipboard histo
 # Local LLM runtime for development (free, no API spend). Run on demand: `ollama serve`.
 brew "ollama"
 
+# AI coding agent CLI (stable channel; ~1 week behind latest, skips bad releases)
+cask "claude-code"
+
 # ---- Browsers ----
 cask "google-chrome"
 cask "firefox@developer-edition"
