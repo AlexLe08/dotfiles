@@ -263,8 +263,6 @@ Open Ghostty; the config is already linked. **Ghostty only allows comments on th
 
 `macos-option-as-alt = left` lets left Option act as Alt (Option+. inserts the previous command's last argument) while right Option still types `é ©`. Option+←/→ word-jumping works either way, so it's not a test of this setting.
 
-Keep iTerm2 for a week or two, then: export its profile, `brew uninstall --cask iterm2`, delete `~/Library/Preferences/com.googlecode.iterm2.plist`, and remove its Brewfile line.
-
 When SSHing into servers, `TERM=xterm-ghostty` may be unknown there ("unknown terminal type"). Ghostty's shell-integration options can handle this; set it up when you first hit it.
 
 ### Verify (new window)
