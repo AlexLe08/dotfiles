@@ -1,6 +1,6 @@
 # Mac Development Setup
 
-Revision 3 (October 2026). Rewritten after a full phase-by-phase setup of a Mac mini (macOS 26, Apple Silicon), so every step here has actually been run, and every gotcha below was actually hit.
+Revision 4 (October 2026). Rewritten after a full phase-by-phase setup of a Mac mini (macOS 26, Apple Silicon), so every step here has actually been run, and every gotcha below was actually hit.
 
 This document has two jobs:
 
@@ -23,7 +23,7 @@ This document has two jobs:
 | `Brewfile` | n/a | Dev tools and apps, safe to publish |
 | `bootstrap.sh` | n/a | Symlinks configs into `$HOME`; backs up anything it replaces; has `--dry-run` |
 | `macos.sh` | n/a | macOS preferences via `defaults write` |
-| `zsh/zprofile` | `~/.zprofile` | Login shells: Homebrew env, then `.zprofile.local`, then Docker Desktop's CLI first on PATH |
+| `zsh/zprofile` | `~/.zprofile` | Login shells: Homebrew env, Claude Code's auto-update flag, then `.zprofile.local`, then Docker Desktop's CLI first on PATH |
 | `zsh/zshrc` | `~/.zshrc` | Unique PATH, completions, history, editor, mise, Starship, fzf, plugins |
 | `git/gitconfig` | `~/.gitconfig` | Shared Git behavior (no identity) |
 | `git/gitconfig.local.example` | `~/.gitconfig.local` | Template for identity and signing (copied once, never committed) |
@@ -31,6 +31,7 @@ This document has two jobs:
 | `ssh/config` | `~/.ssh/config` | Includes `~/.ssh/config.local`, then GitHub key + Keychain |
 | `ghostty/config` | `~/.config/ghostty/config` | Font, Option-as-Alt, theme |
 | `mise/config.toml` | `~/.config/mise/config.toml` | Global Node, pnpm, Python |
+| `claude/settings.json` | `~/.claude/settings.json` | Claude Code user settings: update channel, Manual start mode, ask rules for commit/push |
 | `vscode/extensions.txt` | n/a | Short core list of editor extensions |
 
 **Not in the repo, on purpose:**
@@ -42,6 +43,7 @@ This document has two jobs:
 | `~/.zprofile.local` | Machine-specific login settings (e.g. OrbStack's shell integration) |
 | `~/.zshrc.local` | Machine-specific interactive settings (currently unused) |
 | `~/.ssh/config.local` | Machine-specific SSH includes (e.g. OrbStack's `orb` host) |
+| `~/.claude/` (all but `settings.json`) | Claude Code's prompt history (`history.jsonl`), session transcripts (`projects/`), caches. Never linked, never committed |
 
 ## Decisions at a glance
 
@@ -59,6 +61,8 @@ This document has two jobs:
 | Containers | **Colima** main; Docker Desktop and OrbStack for learning | Colima has no license strings for a project seeking users |
 | `docker` CLI | Docker Desktop's (`~/.docker/bin`), first on PATH | Doesn't depend on a learning tool staying installed |
 | Self-updating apps | **The app updates itself** | Two updaters means drift; macOS also blocks Homebrew from modifying some apps |
+| AI coding agent | Claude Code, **Homebrew cask (stable channel)** | In the Brewfile; updates itself through Homebrew via one env var; no Node dependency |
+| Agent permissions | **Start in Manual**; `ask` rules on `git commit` / `git push` | See every action while learning; commit hygiene holds even after switching to auto mode |
 
 ---
 
@@ -233,6 +237,14 @@ rm -rf ~/.oh-my-zsh
 rm -f ~/.zcompdump*                    # stale completion cache from OMZ
 ```
 
+If Claude Code was installed before, move its old config aside **before** bootstrap
+(bootstrap puts a link inside `~/.claude`, so moving the folder afterward moves the link too):
+
+```bash
+mkdir -p ~/setup-backup/claude-old
+mv ~/.claude ~/.claude.json ~/setup-backup/claude-old/ 2>/dev/null
+```
+
 Check projects for `"volta"` pins first (mise doesn't read that field):
 `grep -rl '"volta"' <projects-dir> --include=package.json --exclude-dir=node_modules`.
 
@@ -268,7 +280,7 @@ When SSHing into servers, `TERM=xterm-ghostty` may be unknown there ("unknown te
 ### Verify (new window)
 
 ```bash
-ls -la ~/.zshrc ~/.zprofile ~/.gitconfig ~/.ssh/config     # all -> ~/dotfiles/...
+ls -la ~/.zshrc ~/.zprofile ~/.gitconfig ~/.ssh/config ~/.claude/settings.json   # all -> ~/dotfiles/...
 echo $PATH | tr ':' '\n' | sort | uniq -d                  # prints nothing
 git config user.email && git config init.defaultBranch     # your noreply / main
 ghostty +validate-config && echo "config valid"
@@ -503,6 +515,56 @@ git -C ~/dotfiles status --short   # empty, even after launching Desktop/OrbStac
 
 ---
 
+## Phase 11: Claude Code
+
+Already installed (Brewfile, Phase 2) and configured (`claude/settings.json`, linked in Phase 4). This phase is first login and checks.
+
+**Why the Homebrew cask:** the native `curl | bash` installer lives outside the Brewfile and edits shell config; the npm package only downloads the same native binary, so Node adds nothing. The `claude-code` cask tracks the **stable** channel (about a week behind latest, skips releases with major regressions). `claude-code@latest` exists; don't use it for real work.
+
+**Updates:** casks don't self-update. `CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE=1` in `zsh/zprofile` lets Claude Code run `brew upgrade claude-code` itself when a new version ships: one updater (Homebrew), triggered by the app. `autoUpdatesChannel: "stable"` in settings keeps the update check matching the cask.
+
+### 11a. First launch and login
+
+```bash
+env | grep -i anthropic          # must print nothing: an ANTHROPIC_API_KEY means per-token API billing
+mkdir -p ~/scratch/claude-test && cd ~/scratch/claude-test && git init -q
+claude
+```
+
+- Log in with the **Claude subscription** account, not Console/API.
+- The trust prompt is per folder. Never trust `~` (that's your SSH keys) or `~/dotfiles` (shell, Git and SSH config).
+- The status bar should show `⏸ manual mode on`. If it offers to make auto mode your default, decline.
+
+### 11b. Permission model
+
+Since v2.1.283, the built-in starting mode is **auto**: a classifier model approves actions, and file edits inside the folder need no approval at all. Auto mode also allows pushing to any branch of the repo, including `main`. This repo's `settings.json` changes two things:
+
+- **Start in Manual** (`"defaultMode": "default"`; "Manual" is the UI name). Switch per session with Shift+Tab when a task is routine.
+- **`ask` rules for `git commit *` and `git push *`** force a prompt in every mode, including auto, so "stage by name, review, commit" survives.
+
+Rules match commands **as written**: `git -C somewhere push` slips past `Bash(git push *)`. They're a guardrail; GitHub branch protection is the real backstop.
+
+`settings.json` is symlinked. Claude Code writes **through** the link (tested), so its own edits (e.g. `/config`) show up in `git status` for review. Writes by the agent to a symlinked settings file always prompt. Never link `~/.claude` itself, and never put a secret in `settings.json`: this repo is meant to be publishable.
+
+### Verify
+
+```bash
+which -a claude                                   # only /opt/homebrew/bin/claude
+claude doctor                                     # Package manager: homebrew; Auto-updates: Managed by
+                                                  # package manager; channel: stable; No installation issues found
+echo $CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE     # 1
+ls -la ~/.claude/settings.json                    # -> ~/dotfiles/claude/settings.json
+git -C ~/dotfiles status --short                  # empty
+```
+
+In a session (scratch folder): `/status` shows a subscription login method; "Create hello.txt containing hi" **asks**; Shift+Enter inserts a newline in Ghostty; Shift+Tab to auto mode, then "Commit hello.txt" **still asks**; `/permissions` lists both ask rules. Then `cd ~ && rm -rf ~/scratch/claude-test`.
+
+Proof of auto-update comes later: `brew list --cask --versions claude-code` shows a newer version without you running brew.
+
+**Later, on purpose:** OpenClaw waits until Claude Code is routine in a real project. Two agents at once make it impossible to tell which one did what.
+
+---
+
 ## Phase 10: Final check and upkeep
 
 ```bash
@@ -510,6 +572,7 @@ brew doctor
 brew bundle check --no-upgrade --file=~/dotfiles/Brewfile
 brew bundle check --no-upgrade --file=~/dotfiles/Brewfile.local
 mise doctor | tail -1
+claude doctor | grep -i "issues"     # No installation issues found
 ssh -T git@github.com
 docker context show
 git -C ~/dotfiles status -sb        # ## main...origin/main
@@ -522,6 +585,8 @@ git -C ~/dotfiles status -sb        # ## main...origin/main
 - **Homebrew can't modify some apps** when run from a terminal without macOS's **App Management** permission (`chown: ... Operation not permitted`). Prefer the app's own updater. Granting App Management to the terminal lets *any* command there modify apps; only do it if you truly need it.
 - **After launching Docker Desktop or OrbStack:** `git -C ~/dotfiles status` and `docker context use colima`.
 - **Committing:** `git add <file>`, `git diff --staged`, `git commit`, `git push`. Starship's `⇡` means unpushed commits.
+- **Claude Code** updates itself through Homebrew. Homebrew keeps old versions on disk; `brew cleanup` now and then.
+- **After Claude Code changes its settings** (`/config`, a permission prompt answer): `git -C ~/dotfiles status`, then review and commit or `git restore`.
 
 ---
 
@@ -543,6 +608,9 @@ git -C ~/dotfiles status -sb        # ## main...origin/main
 | An app's change landed in an unrelated commit | `git commit -am` stages everything | Stage by name; review `--staged` |
 | Shell startup got slower | Usually `compinit` | Profile (below) |
 | `brew uninstall`: "already an App at '/opt/homebrew/Caskroom/...'" | A leftover copy in Homebrew's storage folder | Look at both copies first, then `brew uninstall --cask --zap --force <name>` |
+| `git diff` shows nothing for a file you know changed | The file is untracked (never committed); `diff` only compares tracked files | `git status --short` shows it as `??`; commit it first |
+| Claude Code edits files without asking | Auto mode (built-in default since v2.1.283) | Check the status bar; check `ls -la ~/.claude/settings.json` is still a link |
+| Claude Code offers to use an API key | `ANTHROPIC_API_KEY` is set | Unset it; log in with the subscription |
 
 **Profiling shell startup** (temporary edit, undone by Git):
 
