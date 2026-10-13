@@ -64,6 +64,9 @@ link git/gitignore_global  "$HOME/.gitignore_global"
 link ssh/config            "$HOME/.ssh/config"
 link ghostty/config        "$HOME/.config/ghostty/config"
 link mise/config.toml      "$HOME/.config/mise/config.toml"
+# Claude Code: link ONLY the settings file. Never ~/.claude itself, which holds
+# prompt history and session transcripts that must never enter Git.
+link claude/settings.json  "$HOME/.claude/settings.json"
 
 # Identity file is per-machine and never committed. Create it once.
 if [[ ! -f "$HOME/.gitconfig.local" ]]; then
