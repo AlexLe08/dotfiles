@@ -546,6 +546,18 @@ Rules match commands **as written**: `git -C somewhere push` slips past `Bash(gi
 
 `settings.json` is symlinked. Claude Code writes **through** the link (tested), so its own edits (e.g. `/config`) show up in `git status` for review. Writes by the agent to a symlinked settings file always prompt. Never link `~/.claude` itself, and never put a secret in `settings.json`: this repo is meant to be publishable.
 
+### Per project
+
+- Commit `.claude/settings.json` with `deny` rules for private data
+  (e.g. `Read(./fixtures/private/**)`, `Read(./.env)`). Add them **before**
+  the first session: `/init` explores the repo.
+- Add `.claude/settings.local.json` to the project's `.gitignore` explicitly.
+  It holds personal allow rules, and an untracked one marks every
+  `git status --porcelain` check (e.g. eval results' `dirty` flag) as dirty.
+- Deny rules cover Claude Code's file tools, not everything a shell command
+  or script prints. Run scripts that read private data in your own terminal.
+- Keep the allow list empty while learning; "Yes, once" over "don't ask again".
+
 ### Verify
 
 ```bash
