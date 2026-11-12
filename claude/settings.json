@@ -1,12 +1,11 @@
 {
   "permissions": {
-    "ask": [
-      "Bash(git commit *)",
-      "Bash(git push *)"
-    ],
+    "ask": [],
     "defaultMode": "default"
   },
-  "model": "sonnet",
+  "model": "opus",
   "autoUpdatesChannel": "stable",
-  "theme": "auto"
+  "theme": "auto",
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true
 }
