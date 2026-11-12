@@ -1,3 +1,7 @@
+# The following lines were added by Docker Desktop to add commands to your PATH.
+export PATH="$PATH:/Users/lami/.docker/bin"
+# End of Docker Desktop section.
+
 # ~/.zprofile (login shells). Managed in ~/dotfiles/zsh/zprofile
 # Sets up Homebrew's environment, including $HOMEBREW_PREFIX used by .zshrc.
 if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -14,8 +18,9 @@ export CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE=1
 
 # Docker Desktop's CLI (~/.docker/bin) goes FIRST on PATH, so `docker` never depends on
 # OrbStack's /usr/local/bin/docker link. Placed after .zprofile.local so it wins over
-# anything added there. The two marker comments match Docker Desktop's own wording,
-# which should stop it from re-adding its version of this block on every launch.
-# The following lines were added by Docker Desktop to add commands to your PATH.
+# anything added there. Deliberately NOT inside Docker Desktop's marker comments:
+# on launch Desktop deletes any marked block whose contents differ from its own and
+# re-adds its block at the top (seen with Desktop 4.94). The marked block at the top
+# of this file is Desktop's own, kept verbatim so it leaves the file alone. Don't
+# edit it, and don't move this line between its markers.
 [[ -d "$HOME/.docker/bin" ]] && export PATH="$HOME/.docker/bin:$PATH"
-# End of Docker Desktop section.

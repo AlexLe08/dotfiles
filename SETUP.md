@@ -489,12 +489,12 @@ Pin the major version (new majors can't read old data). Bind ports to `127.0.0.1
 
 - Turn off **start at login** in both. Docker Desktop: Resources → Memory 4 GB.
 - OrbStack: decline its offer to migrate Docker Desktop data.
-- **Docker Desktop switches the context to itself on launch and doesn't switch back on quit.** After any Desktop or OrbStack session: quit the app, then `colima start` or `docker context use colima`.
+- **Docker Desktop switches the context to itself on launch and doesn't switch back on quit.** After any Desktop or OrbStack session: quit the app, then `colima start` (or `docker context use colima` if Colima is already running: `colima stop` removes the `colima` context and `colima start` re-creates it).
 - Both apps edit shell and SSH files on launch. Because those files are symlinks into this repo, you'll see it in `git status`. How each is handled:
 
 | Edit | By | Where it lives now |
 |---|---|---|
-| PATH line for `~/.docker/bin` | Docker Desktop | `zsh/zprofile`, prepended and guarded, wrapped in Docker Desktop's own marker comments. With its markers present, Desktop stops re-adding its block (tested) |
+| PATH line for `~/.docker/bin` | Docker Desktop | `zsh/zprofile`: Desktop's own marked block kept verbatim at the top (it appends), plus our guarded prepend at the end, outside the markers. On launch Desktop deletes any marked block that isn't exactly its own and re-adds it at the top, so never edit its block or put our line inside it (tested with Desktop 4.94) |
 | Completions block (runs `compinit` again) | Docker Desktop | Replaced by one guarded `FPATH` line in `zsh/zshrc` before the single `compinit` |
 | `source ~/.orbstack/shell/init.zsh` | OrbStack | `~/.zprofile.local` |
 | `Include ~/.orbstack/ssh/config` | OrbStack | `~/.ssh/config.local` |
@@ -614,6 +614,7 @@ git -C ~/dotfiles status -sb        # ## main...origin/main
 | Duplicate PATH entries | `/etc/paths.d/homebrew` plus `brew shellenv` | `typeset -U path PATH`; leave the system file alone |
 | Shell edits appear in `git status` you didn't make | An app edited a symlinked config | Diff it, `git restore`, move the line to a `.local` file |
 | Docker commands fail after using Docker Desktop | Context left on `desktop-linux` | `docker context use colima` |
+| `docker context use colima`: `context not found ... meta.json` | Colima is stopped; `colima stop` removes its context | `colima start` |
 | Containers see empty project folders | Path not mounted into Colima's VM | `--mount "/Volumes/<YourSSD>:w"` (plus `$HOME:w`) |
 | `brew upgrade` on an app: `Operation not permitted` | macOS App Management protection | Use the app's own updater |
 | Global Node version changed by itself | `node = "lts"` follows new LTS releases | Pin a major: `node = "24"` |
