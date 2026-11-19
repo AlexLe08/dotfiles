@@ -3,7 +3,7 @@
     "ask": [],
     "defaultMode": "default"
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "autoUpdatesChannel": "stable",
   "theme": "auto",
   "remoteControlAtStartup": true,
