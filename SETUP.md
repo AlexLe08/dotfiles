@@ -428,6 +428,7 @@ Prettier test with a `.ts` file: blank lines are cleaned in a project with a Pre
 - **Postman:** free account. It syncs to the cloud; never store real secrets in environment values (use Vault, or `.env` + Bruno).
 - **Beekeeper Studio:** SQLite or Postgres (Phase 9).
 - **Raycast:** free Cmd+Space from Spotlight first (Keyboard Shortcuts → Spotlight), then set Raycast's hotkey. Bind window-management hotkeys. Clipboard History records everything you copy, including API keys: exclude password managers and keep history short.
+- **RustDesk:** on first launch, grant Screen Recording, Accessibility, and Input Monitoring (System Settings → Privacy & Security), or remote sessions show a black screen or ignore input. Ignore its in-app update prompts (turn the check off in Settings if your version has the option); Homebrew updates it (the cask isn't marked self-updating, so plain `brew upgrade` covers it). ID and permanent password live in `~/Library/Preferences/com.carriez.RustDesk`, so reinstalling keeps them; only `brew uninstall --zap` resets them.
 
 ---
 

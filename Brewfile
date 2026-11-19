@@ -35,6 +35,7 @@ cask "visual-studio-code"
 
 # ---- Productivity ----
 cask "raycast"                  # launcher + window management + clipboard history
+cask "rustdesk"                 # remote desktop (open source); updated by brew, not its own updater
 
 # Local LLM runtime for development (free, no API spend). Run on demand: `ollama serve`.
 brew "ollama"
