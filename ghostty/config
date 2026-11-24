@@ -14,3 +14,7 @@ window-save-state = always
 
 # Browse themes with: ghostty +list-themes
 theme = Liquid Carbon Transparent
+
+# When ssh-ing, install Ghostty's terminfo on the remote (needs `tic` there);
+# if that fails, fall back to TERM=xterm-256color. Fixes "Error opening terminal: xterm-ghostty".
+shell-integration-features = ssh-env,ssh-terminfo
