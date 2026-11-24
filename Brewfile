@@ -20,6 +20,7 @@ brew "bat"                      # cat with syntax highlighting
 brew "tree"
 brew "wget"
 brew "tlrc"
+brew "age"                      # file encryption (project dependency)
 
 # ---- Containers ----
 # Docker Desktop provides the docker CLI, compose, and buildx.
