@@ -31,7 +31,7 @@ This document has two jobs:
 | `ssh/config` | `~/.ssh/config` | Includes `~/.ssh/config.local`, then GitHub key + Keychain |
 | `ghostty/config` | `~/.config/ghostty/config` | Font, Option-as-Alt, theme |
 | `mise/config.toml` | `~/.config/mise/config.toml` | Global Node, pnpm, Python |
-| `claude/settings.json` | `~/.claude/settings.json` | Claude Code user settings: update channel, Manual start mode, ask rules for commit/push |
+| `claude/settings.json` | `~/.claude/settings.json` | Claude Code user settings: update channel, Manual start mode |
 | `vscode/extensions.txt` | n/a | Short core list of editor extensions |
 
 **Not in the repo, on purpose:**
@@ -53,7 +53,7 @@ This document has two jobs:
 | System tools vs language tools | Homebrew for system tools, **mise for language toolchains** | Always obvious where something came from; no "which Python is this?" |
 | Terminal | Ghostty | Free, native, fast |
 | Shell | Plain zsh + Starship + 2 plugins (no Oh My Zsh) | You know what every line does |
-| Node | `node = "24"` (major pin), per-project `.nvmrc` | The `lts` alias moves on someone else's schedule (Node 26 becomes LTS in late 2026) |
+| Node | Global `node = "24"` (major pin), per-project `.nvmrc` | The `lts` alias moves on someone else's schedule (Node 26 became LTS in October 2026). 24 is supported until April 2028. Projects from quick-start-repo pin `lts/*` in `.nvmrc` instead, so they run the current LTS (26) |
 | JS package manager | pnpm globally; per project, whatever the lockfile says | Installing with the wrong one ignores the lockfile |
 | Editor | VS Code; Settings Sync is the source of truth; Cursor later | Sync covers settings, keybindings, snippets; `extensions.txt` is just the core |
 | Git auth + signing | One SSH key (passphrase + Keychain) for both | Simple, free, "Verified" on GitHub |
@@ -62,7 +62,7 @@ This document has two jobs:
 | `docker` CLI | Docker Desktop's (`~/.docker/bin`), first on PATH | Doesn't depend on a learning tool staying installed |
 | Self-updating apps | **The app updates itself** | Two updaters means drift; macOS also blocks Homebrew from modifying some apps |
 | AI coding agent | Claude Code, **Homebrew cask (stable channel)** | In the Brewfile; updates itself through Homebrew via one env var; no Node dependency |
-| Agent permissions | **Start in Manual**; `ask` rules on `git commit` / `git push` | See every action while learning; commit hygiene holds even after switching to auto mode |
+| Agent permissions | **Start in Manual**; commits and pushes don't ask | See every action while learning; Claude commits and pushes for you, and each project's deny rules and GitHub rulesets keep it off `main` |
 
 ---
 
@@ -362,7 +362,9 @@ mise install
 echo "24" > .nvmrc
 ```
 
-mise reads `.nvmrc` / `.node-version` / `.python-version` because of `idiomatic_version_file_enable_tools` in `mise/config.toml`; recent mise versions don't by default. Use the package manager matching the lockfile (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm). Projects on Node 20 are past end-of-life (April 2026): bump them to 24 and run their tests.
+Projects made from quick-start-repo already have one: `.nvmrc` says `lts/*`, so `mise install` there installs the current LTS (26 now) beside the global 24, and the global stays put.
+
+mise reads `.nvmrc` / `.node-version` / `.python-version` / `.java-version` / `global.json` because of `idiomatic_version_file_enable_tools` in `mise/config.toml`; recent mise versions don't by default. Use the package manager matching the lockfile (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm). Projects on Node 20 are past end-of-life (April 2026): bump them to 24 and run their tests.
 
 Global CLIs that should survive Node upgrades: `mise use --global npm:<package>`. Python tooling (`uv`): `mise use --global uv` when a Python project needs it, not before.
 
@@ -538,12 +540,11 @@ claude
 
 ### 11b. Permission model
 
-Since v2.1.283, the built-in starting mode is **auto**: a classifier model approves actions, and file edits inside the folder need no approval at all. Auto mode also allows pushing to any branch of the repo, including `main`. This repo's `settings.json` changes two things:
+Since v2.1.283, the built-in starting mode is **auto**: a classifier model approves actions, and file edits inside the folder need no approval at all. Auto mode also allows pushing to any branch of the repo, including `main`. This repo's `settings.json` changes one thing:
 
 - **Start in Manual** (`"defaultMode": "default"`; "Manual" is the UI name). Switch per session with Shift+Tab when a task is routine.
-- **`ask` rules for `git commit *` and `git push *`** force a prompt in every mode, including auto, so "stage by name, review, commit" survives.
 
-Rules match commands **as written**: `git -C somewhere push` slips past `Bash(git push *)`. They're a guardrail; GitHub branch protection is the real backstop.
+Commits and pushes don't ask: Claude makes them for you. Each project's `.claude/settings.json` denies pushes to `main` and force pushes. Rules match commands **as written**: `git -C somewhere push` slips past `Bash(git push * main)`. They're a guardrail; GitHub branch protection is the real backstop.
 
 `settings.json` is symlinked. Claude Code writes **through** the link (tested), so its own edits (e.g. `/config`) show up in `git status` for review. Writes by the agent to a symlinked settings file always prompt. Never link `~/.claude` itself, and never put a secret in `settings.json`: this repo is meant to be publishable.
 
@@ -570,7 +571,7 @@ ls -la ~/.claude/settings.json                    # -> ~/dotfiles/claude/setting
 git -C ~/dotfiles status --short                  # empty
 ```
 
-In a session (scratch folder): `/status` shows a subscription login method; "Create hello.txt containing hi" **asks**; Shift+Enter inserts a newline in Ghostty; Shift+Tab to auto mode, then "Commit hello.txt" **still asks**; `/permissions` lists both ask rules. Then `cd ~ && rm -rf ~/scratch/claude-test`.
+In a session (scratch folder): `/status` shows a subscription login method; "Create hello.txt containing hi" **asks**; Shift+Enter inserts a newline in Ghostty; Shift+Tab to auto mode, then "Commit hello.txt" goes ahead without asking. Then `cd ~ && rm -rf ~/scratch/claude-test`.
 
 Proof of auto-update comes later: `brew list --cask --versions claude-code` shows a newer version without you running brew.
 

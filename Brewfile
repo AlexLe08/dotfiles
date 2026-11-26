@@ -21,6 +21,8 @@ brew "tree"
 brew "wget"
 brew "tlrc"
 brew "age"                      # file encryption (project dependency)
+brew "typos-cli"                # spell checker; pre-commit hooks and check scripts run it
+brew "gitleaks"                 # secret scanner; pre-commit hooks and check scripts run it
 
 # ---- Containers ----
 # Docker Desktop provides the docker CLI, compose, and buildx.
