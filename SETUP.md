@@ -53,7 +53,7 @@ This document has two jobs:
 | System tools vs language tools | Homebrew for system tools, **mise for language toolchains** | Always obvious where something came from; no "which Python is this?" |
 | Terminal | Ghostty | Free, native, fast |
 | Shell | Plain zsh + Starship + 2 plugins (no Oh My Zsh) | You know what every line does |
-| Node | `node = "24"` (major pin), per-project `.nvmrc` | The `lts` alias moves on someone else's schedule (Node 26 becomes LTS in late 2026) |
+| Node | Global `node = "24"` (major pin), per-project `.nvmrc` | The `lts` alias moves on someone else's schedule (Node 26 became LTS in October 2026). 24 is supported until April 2028. Projects from quick-start-repo pin `lts/*` in `.nvmrc` instead, so they run the current LTS (26) |
 | JS package manager | pnpm globally; per project, whatever the lockfile says | Installing with the wrong one ignores the lockfile |
 | Editor | VS Code; Settings Sync is the source of truth; Cursor later | Sync covers settings, keybindings, snippets; `extensions.txt` is just the core |
 | Git auth + signing | One SSH key (passphrase + Keychain) for both | Simple, free, "Verified" on GitHub |
@@ -361,6 +361,8 @@ mise install
 ```bash
 echo "24" > .nvmrc
 ```
+
+Projects made from quick-start-repo already have one: `.nvmrc` says `lts/*`, so `mise install` there installs the current LTS (26 now) beside the global 24, and the global stays put.
 
 mise reads `.nvmrc` / `.node-version` / `.python-version` / `.java-version` / `global.json` because of `idiomatic_version_file_enable_tools` in `mise/config.toml`; recent mise versions don't by default. Use the package manager matching the lockfile (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm). Projects on Node 20 are past end-of-life (April 2026): bump them to 24 and run their tests.
 
