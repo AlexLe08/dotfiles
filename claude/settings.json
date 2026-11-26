@@ -7,5 +7,9 @@
   "autoUpdatesChannel": "stable",
   "theme": "auto",
   "remoteControlAtStartup": true,
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); cwd=$(echo \"$input\" | jq -r '.workspace.current_dir // .cwd'); case \"$cwd\" in \"$HOME\"*) dir=\"~${cwd#$HOME}\";; *) dir=\"$cwd\";; esac; br=$(git -C \"$cwd\" --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git -C \"$cwd\" --no-optional-locks rev-parse --short HEAD 2>/dev/null); printf '\\033[1;36m%s\\033[0m' \"$dir\"; [ -n \"$br\" ] && printf ' on \\033[1;35m %s\\033[0m' \"$br\"; exit 0"
+  }
 }
