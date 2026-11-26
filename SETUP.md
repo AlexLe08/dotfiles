@@ -362,7 +362,7 @@ mise install
 echo "24" > .nvmrc
 ```
 
-mise reads `.nvmrc` / `.node-version` / `.python-version` because of `idiomatic_version_file_enable_tools` in `mise/config.toml`; recent mise versions don't by default. Use the package manager matching the lockfile (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm). Projects on Node 20 are past end-of-life (April 2026): bump them to 24 and run their tests.
+mise reads `.nvmrc` / `.node-version` / `.python-version` / `.java-version` / `global.json` because of `idiomatic_version_file_enable_tools` in `mise/config.toml`; recent mise versions don't by default. Use the package manager matching the lockfile (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm). Projects on Node 20 are past end-of-life (April 2026): bump them to 24 and run their tests.
 
 Global CLIs that should survive Node upgrades: `mise use --global npm:<package>`. Python tooling (`uv`): `mise use --global uv` when a Python project needs it, not before.
 

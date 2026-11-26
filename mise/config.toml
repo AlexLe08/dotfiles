@@ -11,5 +11,7 @@ python = "3.13"                 # one behind latest for library compatibility
 # "npm:typescript" = "latest"
 
 [settings]
-# Let mise read .nvmrc / .node-version / .python-version in existing projects.
-idiomatic_version_file_enable_tools = ["node", "python"]
+# Let mise read .nvmrc / .node-version / .python-version / .java-version /
+# global.json in existing projects, so `mise install` there picks the
+# project's version without changing the global one.
+idiomatic_version_file_enable_tools = ["node", "python", "java", "dotnet"]
